@@ -1,0 +1,83 @@
+#include<stdio.h>
+#include<string.h>
+#include<stdlib.h>
+int searchoptab(char *opcode){
+    FILE *optab=fopen("optab.txt","r");
+    char mnemonic[20],code[20];
+    if(!optab){
+        printf("error opening optab\n");
+        return 0;
+    }
+    while(fscanf(optab,"%s %s",mnemonic,code)!=EOF){
+        if(strcmp(opcode,mnemonic)==0){
+            fclose(optab);
+            return 1;
+        }
+    }
+    fclose(optab);
+    return 0;
+}
+int main(){
+    FILE *input=fopen("input.txt","r");
+    FILE *intermediate=fopen("intermediate.txt","w");
+    FILE *symtab=fopen("symtab.txt","w");
+    FILE *lengthfile=fopen("lengthfile.txt","w");
+    if(!input||!intermediate||!symtab||!lengthfile){
+        printf("error opening file");
+        return 0;
+    }
+    char label[20],opcode[20],operand[20];
+    char programname[20]="";
+    int locctr=0,start=0;
+
+    fscanf(input,"%s %s %s",label,opcode,operand);
+
+    if(strcmp(opcode,"START")==0){
+         strcpy(programname,label);
+         sscanf(operand,"%x",&start);
+         locctr=start;
+         fprintf(intermediate,"%s %s %s\n",label,opcode,operand);
+        fscanf(input,"%s %s %s",label,opcode,operand);
+    }
+    else{
+         locctr=0;
+     }
+     while(strcmp(opcode,"END")!=0){
+        fprintf(intermediate,"%04x %s %s %s\n",locctr,label,opcode,operand);
+        if(strcmp(label,"**")!=0){
+            fprintf(symtab,"%s %04x\n",label,locctr);
+        }
+        if(searchoptab(opcode)){
+            locctr+=3;    
+        }
+        else if(strcmp(opcode,"WORD")==0){
+            locctr+=3;
+        }
+        else if(strcmp(opcode,"RESW")==0){
+            locctr+=3*atoi(operand);
+        }
+        else if(strcmp(opcode,"RESB")==0){
+            locctr+=atoi(operand);
+        }
+        else if(strcmp(opcode,"BYTE")==0){
+            if(operand[0]=='C'){
+                locctr+=strlen(operand)-3;
+            }
+             else if (operand[0] == 'X') {
+
+                locctr += (strlen(operand) - 3) / 2;
+            }
+        }
+        fscanf(input,"%s %s %s",label,opcode,operand);
+
+     }
+     fprintf(intermediate,"%04x %s %s %s\n",locctr,label,opcode,operand);
+     int lengthofp=locctr-start;
+     fprintf(lengthfile, "%X\n", lengthofp);
+     fclose(input);
+     fclose(intermediate);
+     fclose(symtab);
+     fclose(lengthfile);
+
+    return 0;
+}
